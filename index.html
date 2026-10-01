@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HALCYON BREAK - 공진 조각을 조립하는 3D 로그라이트 아케이드 슈터" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>HALCYON BREAK</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+
+      <!-- ===== HUD ===== -->
+      <div id="hud" class="hidden">
+        <div id="hud-top">
+          <div id="hud-vitals">
+            <div class="bar-wrap">
+              <span class="bar-label">HULL</span>
+              <div class="bar hp-bar"><div id="hp-fill" class="bar-fill hp-fill"></div></div>
+              <span id="hp-text" class="bar-num">100</span>
+            </div>
+            <div class="bar-wrap">
+              <span class="bar-label">AEGIS</span>
+              <div class="bar shield-bar"><div id="shield-fill" class="bar-fill shield-fill"></div></div>
+              <span id="shield-text" class="bar-num">50</span>
+            </div>
+          </div>
+          <div id="hud-wave">
+            <span id="wave-label">WAVE 1/9</span>
+            <span id="wave-name">—</span>
+          </div>
+          <div id="hud-score">
+            <div><span class="score-label">SCORE</span> <span id="score">0</span></div>
+            <div><span class="score-label">BEST</span> <span id="best">0</span></div>
+          </div>
+        </div>
+
+        <div id="boss-wrap" class="hidden">
+          <span id="boss-name">GATE WARDEN</span>
+          <div class="bar boss-bar"><div id="boss-fill" class="bar-fill boss-fill"></div></div>
+        </div>
+
+        <div id="combo-wrap" class="hidden"><span id="combo-mult">x1.0</span><span class="combo-sub">COMBO</span></div>
+
+        <div id="hud-bottom">
+          <div id="weapons"></div>
+          <div id="hud-actions">
+            <div id="phase-chip" class="chip"><span class="chip-key">SPACE</span><span class="chip-name">PHASE</span><div id="phase-fill" class="chip-fill"></div></div>
+            <div id="bomb-chip" class="chip hidden"><span class="chip-key">R</span><span class="chip-name">NOVA</span></div>
+          </div>
+        </div>
+
+        <div id="banner" class="hidden"><span id="banner-text"></span></div>
+      </div>
+
+      <!-- ===== TITLE ===== -->
+      <div id="screen-title" class="screen">
+        <div class="title-box">
+          <h1 class="logo">HALCYON<span>BREAK</span></h1>
+          <p class="tagline">공진의 파편으로 무기를 조립하라 — 붕괴하는 성단의 관문을 뚫고 나가라.</p>
+          <div class="story">
+            11년 전, 고요(Stillness)라는 공진 파동이 할리온 성단의 관문들을 썩었다.<br />
+            당신은 루미나 파일럿. 적의 잔해에서 주파수 조각을 수확하고, 레조넌스 위브로 무기를 변형시켜<br />
+            9개 관문 웨이브와 3체의 게이트 워든을 돌파하라.
+          </div>
+          <div class="controls">
+            <div><kbd>W A S D</kbd> 이동</div>
+            <div><kbd>MOUSE</kbd> 조준</div>
+            <div><kbd>LMB</kbd> 발사</div>
+            <div><kbd>SPACE</kbd> 페이즈 시프트</div>
+            <div><kbd>Q</kbd> 위브 발동</div>
+            <div><kbd>R</kbd> 노바 서지</div>
+            <div><kbd>1 2 3</kbd> 무기 전환</div>
+            <div><kbd>P / ESC</kbd> 일시정지</div>
+          </div>
+          <div class="title-buttons">
+            <button id="btn-start" class="btn btn-primary">LAUNCH</button>
+            <button id="btn-title-settings" class="btn">SETTINGS</button>
+          </div>
+          <div id="title-best" class="best-line">BEST 0</div>
+          <div class="freq-legend">
+            <span class="dot dot-pulse"></span>PULSE
+            <span class="dot dot-arc"></span>ARC
+            <span class="dot dot-void"></span>VOID
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== UPGRADE ===== -->
+      <div id="screen-upgrade" class="screen hidden">
+        <div class="upgrade-box">
+          <h2 class="screen-title">RESONANCE UPLINK</h2>
+          <p class="screen-sub">강화 하나를 선택하라</p>
+          <div id="upgrade-cards" class="cards"></div>
+        </div>
+      </div>
+
+      <!-- ===== PAUSE ===== -->
+      <div id="screen-paused" class="screen hidden">
+        <div class="pause-box">
+          <h2 class="screen-title">PAUSED</h2>
+          <div class="pause-buttons">
+            <button id="btn-resume" class="btn btn-primary">RESUME</button>
+            <button id="btn-pause-settings" class="btn">SETTINGS</button>
+            <button id="btn-restart" class="btn">RESTART</button>
+            <button id="btn-quit" class="btn">TITLE</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== GAME OVER ===== -->
+      <div id="screen-gameover" class="screen hidden">
+        <div class="over-box">
+          <h2 id="over-title" class="screen-title">SIGNAL LOST</h2>
+          <p id="over-sub" class="screen-sub">—</p>
+          <div id="over-stats" class="stats"></div>
+          <div class="pause-buttons">
+            <button id="btn-retry" class="btn btn-primary">RETRY</button>
+            <button id="btn-title" class="btn">TITLE</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SETTINGS MODAL ===== -->
+      <div id="screen-settings" class="screen hidden">
+        <div class="settings-box">
+          <h2 class="screen-title">SETTINGS</h2>
+          <div class="setting-row">
+            <span class="setting-label">그래픽 품질</span>
+            <div class="seg" id="seg-quality">
+              <button data-quality="low" class="btn btn-seg">LOW</button>
+              <button data-quality="medium" class="btn btn-seg">MED</button>
+              <button data-quality="high" class="btn btn-seg">HIGH</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">효과음</span>
+            <input id="vol-sfx" type="range" min="0" max="100" value="80" />
+            <span id="vol-sfx-val" class="setting-val">80</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">음악</span>
+            <input id="vol-music" type="range" min="0" max="100" value="55" />
+            <span id="vol-music-val" class="setting-val">55</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">음악 켜기</span>
+            <button id="toggle-music" class="btn btn-seg">ON</button>
+          </div>
+          <div class="pause-buttons">
+            <button id="btn-settings-close" class="btn btn-primary">CLOSE</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="vignette"></div>
+      <div id="flash"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
