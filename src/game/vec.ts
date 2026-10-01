@@ -40,6 +40,34 @@ export function dist(a: Vec3, b: Vec3): number {
   return Math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
+/**
+ * Minimum distance from point c to the line segment a..b.
+ * A zero-length segment (a === b) yields the plain distance from c to a,
+ * which is what we want on a bullet's spawn frame.
+ */
+export function segMinDist(a: Vec3, b: Vec3, c: Vec3): number {
+  const abx = b.x - a.x
+  const aby = b.y - a.y
+  const abz = b.z - a.z
+  const acx = c.x - a.x
+  const acy = c.y - a.y
+  const acz = c.z - a.z
+  const abLen2 = abx * abx + aby * aby + abz * abz
+  let t = 0
+  if (abLen2 > 1e-8) {
+    t = (acx * abx + acy * aby + acz * abz) / abLen2
+    if (t < 0) t = 0
+    else if (t > 1) t = 1
+  }
+  const px = a.x + abx * t
+  const py = a.y + aby * t
+  const pz = a.z + abz * t
+  const dx = c.x - px
+  const dy = c.y - py
+  const dz = c.z - pz
+  return Math.sqrt(dx * dx + dy * dy + dz * dz)
+}
+
 export function normalize(a: Vec3): Vec3 {
   const l = len(a)
   if (l > 1e-8) {

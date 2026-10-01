@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Engine } from '../../src/game/engine'
+import { weaponDef } from '../../src/game/data/weapons'
 import { STEP, aimAt, drainEvents, godMode, makeEngine } from './helpers'
 
 describe('Engine core flow', () => {
@@ -165,5 +166,113 @@ describe('Engine core flow', () => {
     expect(a.kills).toBe(b.kills)
     expect(a.bullets.length).toBe(b.bullets.length)
     expect(a.waveIndex).toBe(b.waveIndex)
+  })
+})
+
+describe('Friendly bullet collision (issue #1: close-range hits)', () => {
+  // Place a single stationary enemy at z on the -Z axis in front of the
+  // player (at the origin) and fire straight forward. We drive fireWeapon +
+  // updateBullets directly (rather than the full step loop) so enemy AI and
+  // the contact-kill rule do not interfere with the bullet collision check
+  // under test.
+  function fireForward(z: number, frames = 10): { e: Engine; en: { id: number; hp: number } } {
+    const e = makeEngine()
+    godMode(e)
+    e.debugClearWave()
+    e.player.pos = { x: 0, y: 0, z: 0 }
+    const en = e.spawnEnemy('mite', { x: 0, y: 0, z })
+    en.state = 'active'
+    e.input.aim = { x: 0, y: 0, z: -1 }
+    const w = e.currentWeapon!
+    const def = weaponDef(w.defId)
+    for (let i = 0; i < frames; i++) {
+      en.pos = { x: 0, y: 0, z } // pin the enemy in place
+      e.fireWeapon(def, w) // fire every frame (cooldown not enforced)
+      e.updateBullets(STEP, STEP)
+    }
+    return { e, en }
+  }
+
+  it('hits a far enemy (regression: existing behavior)', () => {
+    const { en } = fireForward(-15, 24)
+    expect(en.hp).toBeLessThan(18) // mite base hp is 18
+  })
+
+  it('hits a close enemy in front of the player (issue #1)', () => {
+    // enemy sits between the player and the 1.2-unit bullet spawn offset
+    const { en } = fireForward(-0.6, 6)
+    expect(en.hp).toBeLessThan(18)
+  })
+
+  it('hits an enemy at several close ranges', () => {
+    for (const z of [-0.4, -0.8, -1.0, -1.5]) {
+      const { en } = fireForward(z, 6)
+      expect(en.hp, `z=${z}`).toBeLessThan(18)
+    }
+  })
+
+  it('a single forward bullet registers a hit even when it spawns beyond the enemy', () => {
+    const e = makeEngine()
+    godMode(e)
+    e.debugClearWave()
+    const en = e.spawnEnemy('mite', { x: 0, y: 0, z: -0.6 })
+    en.state = 'active'
+    const hpBefore = en.hp
+    e.input.aim = { x: 0, y: 0, z: -1 }
+    const w = e.currentWeapon!
+    e.fireWeapon(weaponDef(w.defId), w)
+    e.updateBullets(STEP, STEP)
+    // the swept test must catch the enemy even though the bullet spawned at
+    // z≈-1.2 (behind the enemy) and moved away during this frame
+    expect(en.hp).toBeLessThan(hpBefore)
+  })
+
+  it('does not re-hit the same enemy with a pierce bullet', () => {
+    const e = makeEngine()
+    godMode(e)
+    e.debugClearWave()
+    const en = e.spawnEnemy('mite', { x: 0, y: 0, z: -0.6 })
+    en.state = 'active'
+    const w = e.currentWeapon!
+    // give the pulse bullet 1 pierce so it survives the first impact
+    e.mods.pierceAdd = 1
+    const dmg = 8 // pulse base damage
+    e.input.aim = { x: 0, y: 0, z: -1 }
+    e.fireWeapon(weaponDef(w.defId), w)
+    e.updateBullets(STEP, STEP)
+    // exactly one hit on this single enemy for this single bullet
+    expect(en.hp).toBe(18 - dmg)
+  })
+
+  it('a fast bullet that skips past the enemy in one frame still hits', () => {
+    const e = makeEngine()
+    godMode(e)
+    e.debugClearWave()
+    e.bulletAssist = 0 // keep the bullet on a straight line
+    const en = e.spawnEnemy('mite', { x: 0, y: 0, z: -2 })
+    en.state = 'active'
+    // hit radius = 0.22 (bullet) + 0.45 (mite) + 0.35 (slack) = 1.02
+    // start at z=-0.8 (1.2 away, just outside) and move 2.4 in one frame
+    // (vel 144 * STEP), ending at z=-3.2 (1.2 away on the far side).
+    // Endpoint-only checks miss it; the swept test catches the crossing.
+    e.bullets.push({
+      id: 999_001,
+      pos: { x: 0, y: 0, z: -0.8 },
+      vel: { x: 0, y: 0, z: -144 },
+      radius: 0.22,
+      damage: 8,
+      freq: 'pulse',
+      friendly: true,
+      pierce: 0,
+      life: 10,
+      homing: 0,
+      hitIds: [],
+      aoe: 0,
+      chain: undefined,
+      crit: false,
+    })
+    const hpBefore = en.hp
+    e.updateBullets(STEP, STEP)
+    expect(en.hp).toBeLessThan(hpBefore)
   })
 })

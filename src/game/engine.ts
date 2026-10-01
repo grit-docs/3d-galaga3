@@ -1,5 +1,5 @@
 import { RNG, randomSeed } from './rng'
-import { clamp, dist, normalize, sub, v3 } from './vec'
+import { clamp, dist, normalize, segMinDist, sub, v3 } from './vec'
 import type {
   Bullet,
   Enemy,
@@ -860,6 +860,12 @@ export class Engine {
         b.vel.y = (vy / l) * cur
         b.vel.z = (vz / l) * cur
       }
+      // remember where the bullet was before this frame so we can test the
+      // whole swept path, not just the endpoint. A fast bullet can skip past
+      // a close enemy between frames; endpoint-only checks miss those.
+      const px = b.pos.x
+      const py = b.pos.y
+      const pz = b.pos.z
       b.pos.x += b.vel.x * step
       b.pos.y += b.vel.y * step
       b.pos.z += b.vel.z * step
@@ -869,7 +875,10 @@ export class Engine {
         for (const e of this.enemies) {
           if (e.state !== 'active' || b.hitIds.includes(e.id)) continue
           const def = enemyDef(e.defId)
-          if (dist(b.pos, e.pos) < b.radius + def.radius + this.hitSlack) {
+          // swept test: min distance from the enemy center to the segment
+          // prev..new. Covers near-range cases where the bullet spawns on the
+          // far side of the enemy and flies away in a single frame.
+          if (segMinDist({ x: px, y: py, z: pz }, b.pos, e.pos) < b.radius + def.radius + this.hitSlack) {
             b.hitIds.push(e.id)
             this.damageEnemy(e, b.damage * (b.crit ? 2 : 1), b.freq, b.crit)
             if (b.chain) {
