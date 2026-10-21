@@ -90,6 +90,7 @@ html, body {
   text-shadow: 0 0 12px rgba(77, 243, 255, 0.55);
 }
 #best { font-size: 14px; color: var(--amber); text-shadow: 0 0 8px rgba(255, 180, 94, 0.4); }
+#kills { font-size: 14px; color: var(--text); text-shadow: 0 0 8px rgba(77, 243, 255, 0.35); }
 
 /* ---------- boss bar: layered frame with phase pips ---------- */
 #boss-wrap {
