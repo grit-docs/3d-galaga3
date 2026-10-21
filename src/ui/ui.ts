@@ -51,6 +51,7 @@ export class UI {
   private bannerUntil = 0
   private lastScore = -1
   private lastBest = -1
+  private lastKills = -1
   private flashTimeout = 0
   private unbinders: Array<() => void> = []
 
@@ -58,7 +59,7 @@ export class UI {
     this.cb = cb
     for (const id of [
       'hud', 'hp-fill', 'hp-text', 'shield-fill', 'shield-text',
-      'wave-label', 'wave-name', 'score', 'best',
+      'wave-label', 'wave-name', 'score', 'kills', 'best',
       'boss-wrap', 'boss-name', 'boss-fill',
       'combo-wrap', 'combo-mult', 'weapons',
       'phase-chip', 'phase-fill', 'bomb-chip',
@@ -172,6 +173,10 @@ export class UI {
     if (engine.score !== this.lastScore) {
       this.lastScore = engine.score
       this.els.get('score')!.textContent = engine.score.toLocaleString()
+    }
+    if (engine.kills !== this.lastKills) {
+      this.lastKills = engine.kills
+      this.els.get('kills')!.textContent = String(engine.kills)
     }
     if (best !== this.lastBest) {
       this.lastBest = best

@@ -29,6 +29,7 @@ test.describe('HALCYON BREAK smoke', () => {
     await expect(page.locator('#hud')).toBeVisible()
     await expect(page.locator('#screen-title')).toBeHidden()
     await expect(page.locator('#wave-label')).toHaveText('WAVE 1/9')
+    await expect(page.locator('#kills')).toHaveText('0')
 
     // --- play: move, aim, fire ---
     await page.keyboard.down('w')
@@ -48,6 +49,16 @@ test.describe('HALCYON BREAK smoke', () => {
     await page.click('#btn-resume')
     await expect(page.locator('#screen-paused')).toBeHidden()
     await expect(page.locator('#hud')).toBeVisible()
+
+    // --- kill count display ---
+    const expectedKills = await page.evaluate(() => {
+      const eng = (window as any).__halcyon.engine
+      const en = eng.spawnEnemy('mite', { x: 0, y: 0, z: -15 })
+      en.state = 'active'
+      eng.killEnemy(en, true)
+      return eng.kills
+    })
+    await expect(page.locator('#kills')).toHaveText(String(expectedKills))
 
     // --- force wave clear → upgrade choice ---
     await page.evaluate(() => (window as any).__halcyon.clearWave())
